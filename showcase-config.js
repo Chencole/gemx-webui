@@ -1,0 +1,1 @@
+window.MOTION_SHOWCASE_CONFIG = {"kind":"gemx","title":"GEM-X Studio","subtitle":"让视频里的动作，成为可用的数据。","description":"NVIDIA GEM-X · 视频提取人体骨骼","port":8771,"upstream":"https://github.com/NVlabs/GEM-X","showcase":true,"backend":{"message":"这是免费公开界面展示，未启用在线推理。请从页面底部的 GitHub 源码安装并启动本机版本。","ready":false}};
