@@ -42,7 +42,15 @@ def backend_root() -> Path:
 def backend_python(root: Path) -> Path:
     # Preserve a venv's executable symlink path: resolving it would bypass venv.
     # A virtual environment copied from another OS is not executable here.
-    return root / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    environment_root = APP_ROOT / "runtime" if backend_device() == "cuda" else root
+    return environment_root / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+
+
+def backend_device() -> str:
+    device = os.environ.get("MOTION_DEVICE", "cpu").lower()
+    if device not in {"cpu", "cuda"}:
+        raise ValueError("MOTION_DEVICE 必须为 cpu 或 cuda。")
+    return device
 
 
 def _missing(root: Path) -> list[str]:
@@ -50,6 +58,9 @@ def _missing(root: Path) -> list[str]:
     if not backend_python(root).is_file():
         missing.append("isolated Python environment")
     sources = ["cpu/run_cpu.py", "cpu/runtime_env.py", "cpu/sam3d_cpu.py", "cpu/skeleton_cpu.py", "repo/gem/network/stats_compose.py", "repo/third_party/sam-3d-body/sam_3d_body/build_models.py", "repo/third_party/soma/soma/soma.py", "repo/third_party/dinov3/hubconf.py"]
+    if backend_device() == "cuda":
+        sources = [path for path in sources if not path.startswith("cpu/")]
+        missing.extend("runtime/" + name for name in ["run_gpu.py", "runtime_env.py", "sam3d_gpu.py", "skeleton.py", "soma_assets.py"] if not (APP_ROOT / "runtime" / name).is_file())
     missing.extend(path for path in sources if not (root / path).is_file())
     for relative, size in MODEL_SIZES.items():
         path = root / relative
@@ -62,14 +73,20 @@ def inspect_backend() -> dict:
     """File/size readiness only; no subprocess, download, imports or inference."""
     root = backend_root()
     missing = _missing(root)
-    message = "已找到现有 GEM-X；完整视频推理测试尚未执行。" if not missing else f"未找到完整的现有 GEM-X（缺少或不完整：{len(missing)} 项）。请用 MOTION_BACKEND_ROOT 指向已安装目录。"
+    device = backend_device()
+    message = "已找到 GEM-X 文件；生成时会检查 CUDA 运行环境。" if device == "cuda" and not missing else "已找到现有 GEM-X；完整视频推理测试尚未执行。" if not missing else f"未找到完整的现有 GEM-X（缺少或不完整：{len(missing)} 项）。请用 MOTION_BACKEND_ROOT 指向已安装目录。"
+    limitations = list(LIMITATIONS)
+    if device == "cuda":
+        limitations[0] = "CUDA 模式使用官方权重，分阶段运行；8 GB 显存默认 batch 1，显存不足会报告错误。"
     return {
         "ready": not missing,
         "message": message,
         "root": str(root),
         "python": str(backend_python(root)),
-        "model": "NVIDIA GEM-X / SOMA 77 joints / CPU",
-        "limitations": list(LIMITATIONS),
+        "model": "NVIDIA GEM-X / SOMA 77 joints / " + device.upper(),
+        "device": device,
+        "device_label": "CUDA GPU · 文件已就绪" if device == "cuda" else "CPU · 文件已就绪",
+        "limitations": limitations,
         "missing": missing,
     }
 
@@ -109,8 +126,9 @@ def build_command(job_dir: Path, config: dict, input_path: Path | None = None) -
     if not status["ready"]:
         raise RuntimeError(status["message"])
     output = Path(job_dir).resolve() / "output"
+    runner = APP_ROOT / "runtime" / "run_gpu.py" if backend_device() == "cuda" else Path(status["root"]) / "cpu" / "run_cpu.py"
     command = [
-        status["python"], "-u", str(Path(status["root"]) / "cpu" / "run_cpu.py"),
+        status["python"], "-u", str(runner),
         "--video", str(video), "--output", str(output),
         "--threads", str(threads), "--start-frame", str(start), "--max-frames", str(maximum),
     ]

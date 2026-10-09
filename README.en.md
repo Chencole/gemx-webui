@@ -2,6 +2,12 @@
 
 # GEM-X Studio
 
+## CUDA backend
+
+An explicit Windows CUDA path is now included; see [CUDA deployment](docs/CUDA.md). Set `MOTION_DEVICE=cuda` to use it. The default remains the existing CPU adapter. CUDA uses official unchanged weights, sequential stages and batch size 1, while skeleton rendering stays on CPU. CUDA initialization errors are reported without silently switching to CPU or removing image conditioning. An eight-frame full pipeline test passed on an RTX 3060 Ti with 8 GB VRAM, including SAM3D features and SOMA skeleton rendering. This verifies execution and output structure, not motion accuracy or long-video performance.
+
+The sections below describe the original CPU setup.
+
 A lightweight web interface for an existing local GEM-X CPU command-line installation. Upload a person video, select a frame range, inspect logs, cancel jobs, and preview or download the original SOMA motion data and skeleton videos.
 
 The interface is currently in Chinese; documentation is available in Chinese and English.

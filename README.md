@@ -14,11 +14,17 @@ short_description: Visual controls for an existing local motion backend.
 
 # GEM-X Studio
 
-为已有的本机 GEM-X CPU 命令行版本提供轻量网页：上传人物视频，设置处理范围，查看日志、取消任务，并预览或下载原始 SOMA 动作数据和骨骼视频。
+为 GEM-X 提供 CPU / CUDA 可视化界面：上传人物视频，设置处理范围，查看日志、取消任务，并预览或下载原始 SOMA 动作数据和骨骼视频。
 
 当前网页界面为中文；使用文档提供中英文。
 
-**仅增加可视化调用层，不安装或替换模型，不修改推理、动作数据或后处理。**
+**保留已有 CPU 后端入口，另外提供 Windows CUDA 执行适配。模型权重与动作解码不变；CUDA 路径使用 batch 1、顺序释放各模型，骨骼预览在 CPU 上完成。**
+
+## NVIDIA GPU 部署
+
+请先阅读 [CUDA 部署说明](docs/CUDA.md)。设置 `MOTION_DEVICE=cuda` 后，页面使用仓库内 GPU 入口及独立环境；未设置时仍调用已有 CPU 后端。CUDA 初始化失败会明确报错，不自动改为 CPU 或无图像特征模型。
+
+GPU 环境文件已锁定；已在 RTX 3060 Ti 8 GB 上通过 8 帧完整 CUDA 推理，包括 SAM3D 图像特征和 SOMA 骨架预览。测试范围和复现参数见 [CUDA 部署说明](docs/CUDA.md)。页面“文件已就绪”只检查安装文件。
 
 ## 项目来源
 
@@ -89,7 +95,7 @@ uv run python app.py --port 8772
 
 ## 检查与许可
 
-页面、参数传递、取消任务、文件下载和关闭停服已进行轻量测试。尚未运行完整模型推理，未验证生成速度或动作质量。
+页面、参数传递、取消任务、文件下载和关闭停服已进行轻量测试。Windows CUDA 后端已通过 RTX 3060 Ti 8 GB 的 8 帧完整推理；公开示例含已有关键点覆盖，仅验证运行和输出结构，未验证动作精度或长视频性能。
 
 ```sh
 uv run python -m unittest discover -s tests -v
